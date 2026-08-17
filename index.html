@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NutriTrack Pro</title>
+    
+    <!-- App Icon & PWA Meta Tags -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="NutriTrack">
+    <meta name="theme-color" content="#0f172a">
+
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f172a'/%3E%3Cg transform='translate(96,96) scale(0.62)'%3E%3Cpath fill='%2310b981' d='M512 96c0 53-43 96-96 96c-17.7 0-32-14.3-32-32c0-35.3-28.7-64-64-64c-17.7 0-32-14.3-32-32s14.3-32 32-32c53 0 96 43 96 96zM288 192c0 53-43 96-96 96c-17.7 0-32-14.3-32-32c0-35.3-28.7-64-64-64c-17.7 0-32-14.3-32-32s14.3-32 32-32c53 0 96 43 96 96zM192 384c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32v-64c0-53 43-96 96-96h64c17.7 0 32 14.3 32 32v128z'/%3E%3C/g%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230f172a'/%3E%3Cg transform='translate(96,96) scale(0.62)'%3E%3Cpath fill='%2310b981' d='M512 96c0 53-43 96-96 96c-17.7 0-32-14.3-32-32c0-35.3-28.7-64-64-64c-17.7 0-32-14.3-32-32s14.3-32 32-32c53 0 96 43 96 96zM288 192c0 53-43 96-96 96c-17.7 0-32-14.3-32-32c0-35.3-28.7-64-64-64c-17.7 0-32-14.3-32-32s14.3-32 32-32c53 0 96 43 96 96zM192 384c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32v-64c0-53 43-96 96-96h64c17.7 0 32 14.3 32 32v128z'/%3E%3C/g%3E%3C/svg%3E">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        [v-cloak] { display: none !important; }
+        
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        appbg: '#0f172a', /* slate-900 */
+                        cardbg: '#1e293b', /* slate-800 */
+                        primary: '#10b981', /* emerald-500 */
+                        secondary: '#3b82f6', /* blue-500 */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-appbg text-slate-100 h-screen overflow-hidden">
+    <div id="app" v-cloak class="h-full flex flex-col relative">
+
+        <header class="bg-cardbg border-b border-slate-700 p-4 shrink-0 shadow-md z-10">
+            <div class="flex justify-between items-center max-w-lg mx-auto w-full">
+                <h1 class="text-xl font-bold text-white tracking-tight">
+                    <i class="fa-solid fa-leaf text-primary mr-2"></i>NutriTrack
+                </h1>
+                <div class="text-xs text-slate-400 font-medium">{{ formattedDate }}</div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 w-full max-w-lg mx-auto relative">
+            
+            <!-- STEPS REMINDER BANNER -->
+            <div v-if="showStepReminderBanner && currentTab === 'dashboard'" class="m-4 bg-secondary/20 border border-secondary/50 rounded-xl p-4 flex items-center justify-between shadow-lg shadow-secondary/10">
+                <div class="flex items-center gap-3">
+                    <div class="bg-secondary p-2 rounded-full text-white">
+                        <i class="fa-solid fa-shoe-prints"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-blue-300">Time to log steps!</h4>
+                        <p class="text-xs text-slate-300">Don't forget your daily activity.</p>
+                    </div>
+                </div>
+                <button @click="openStepsModal" class="bg-secondary hover:bg-blue-600 text-white text-xs font-bold py-2 px-4 rounded-lg transition">Log</button>
+            </div>
+
+            <!-- ================= ONBOARDING / PROFILE TAB ================= -->
+            <div v-if="currentTab === 'profile' || !hasProfile" class="p-4 space-y-6 animate-fade-in">
+                <div v-if="!hasProfile" class="text-center py-6">
+                    <h2 class="text-2xl font-bold text-white mb-2">Welcome to NutriTrack</h2>
+                    <p class="text-slate-400 text-sm">Let's calculate your personalized goals.</p>
+                </div>
+                <div v-else>
+                    <h2 class="text-xl font-bold text-white">Your Profile</h2>
+                    <p class="text-xs text-slate-400 mb-4">Update your stats to recalculate goals</p>
+                </div>
+
+                <form @submit.prevent="saveProfile" class="space-y-4 bg-cardbg p-5 rounded-2xl shadow-lg border border-slate-700">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Birthday</label>
+                            <input type="date" v-model="profile.birthday" required class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Gender</label>
+                            <select v-model="profile.gender" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Weight (kg)</label>
+                            <input type="number" step="0.1" v-model.number="profile.weight" required class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Height (cm)</label>
+                            <input type="number" v-model.number="profile.height" required class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Activity Level</label>
+                        <select v-model.number="profile.activityLevel" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                            <option value="1.2">Sedentary (office job)</option>
+                            <option value="1.375">Light Exercise (1-2 days/week)</option>
+                            <option value="1.55">Moderate (3-5 days/week)</option>
+                            <option value="1.725">Active (6-7 days/week)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Goal</label>
+                        <select v-model.number="profile.goalDeficit" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-primary outline-none">
+                            <option value="0">Maintain Weight</option>
+                            <option value="250">Slow Weight Loss (-0.25kg/wk)</option>
+                            <option value="500">Moderate Weight Loss (-0.5kg/wk)</option>
+                            <option value="1000">Aggressive Weight Loss (-1kg/wk)</option>
+                        </select>
+                    </div>
+                    
+                    <hr class="border-slate-700 my-4">
+
+                    <!-- Steps Reminder Setting -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="block text-sm font-semibold text-white">Steps Reminder</label>
+                            <p class="text-xs text-slate-400">Show prompt in evening</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" v-model="profile.stepReminder" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                    <div v-if="profile.stepReminder" class="mt-2">
+                        <input type="time" v-model="profile.reminderTime" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-primary outline-none">
+                    </div>
+
+                    <button type="submit" class="w-full bg-primary hover:bg-emerald-600 text-white font-bold rounded-xl p-4 mt-4 transition shadow-lg shadow-primary/20">
+                        {{ hasProfile ? 'Update Profile & Goals' : 'Calculate My Goals' }}
+                    </button>
+                </form>
+            </div>
+
+            <!-- ================= DASHBOARD TAB ================= -->
+            <div v-if="hasProfile && currentTab === 'dashboard'" class="p-4 space-y-6">
+                <!-- Calories Summary Card -->
+                <div class="bg-cardbg rounded-3xl p-6 shadow-xl border border-slate-700 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
+                    
+                    <h2 class="text-slate-300 font-semibold mb-4 text-sm uppercase tracking-wider">Calories Remaining</h2>
+                    
+                    <div class="flex justify-between items-end mb-6">
+                        <div class="text-5xl font-black text-white tracking-tighter">
+                            {{ remainingCalories }}
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold text-slate-300">Target: {{ dailyTarget }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="h-3 w-full bg-slate-700 rounded-full overflow-hidden mb-4 relative">
+                        <div class="h-full rounded-full transition-all duration-1000 ease-out" 
+                             :class="remainingCalories < 0 ? 'bg-red-500' : 'bg-primary'"
+                             :style="{ width: Math.min((totalConsumed / (dailyTarget + totalBurned)) * 100, 100) + '%' }">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between text-xs font-semibold px-1">
+                        <div class="text-slate-300"><i class="fa-solid fa-utensils text-slate-400 mr-1"></i> Eaten: <span class="text-white">{{ totalConsumed }}</span></div>
+                        <div class="text-primary"><i class="fa-solid fa-fire text-orange-400 mr-1"></i> Burned: <span class="text-white">{{ totalBurned }}</span></div>
+                    </div>
+                </div>
+
+                <!-- Today's Log -->
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-white">Today's Log</h3>
+                    </div>
+
+                    <div v-if="todaysLog.length === 0" class="text-center py-10 bg-cardbg rounded-2xl border border-slate-700 border-dashed">
+                        <div class="text-4xl mb-3">🍽️</div>
+                        <p class="text-slate-400 font-medium">Nothing logged today.</p>
+                        <p class="text-xs text-slate-500 mt-1">Tap + Food or + Activity to start.</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div v-for="(item, index) in todaysLog" :key="item.id" 
+                             @click="openEditModal(item)"
+                             class="bg-cardbg border border-slate-700 rounded-xl p-4 flex items-center justify-between shadow-sm active:bg-slate-700 transition cursor-pointer">
+                            <div class="flex items-center gap-4">
+                                <div :class="['w-10 h-10 rounded-full flex items-center justify-center text-lg', item.type === 'food' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400']">
+                                    <i :class="item.type === 'food' ? 'fa-solid fa-utensils' : 'fa-solid fa-person-running'"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-slate-100 text-sm">{{ item.name }}</h4>
+                                    <p class="text-xs text-slate-400">{{ item.amount }} {{ item.unit }}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div :class="['font-bold', item.type === 'food' ? 'text-white' : 'text-primary']">
+                                    {{ item.type === 'food' ? '+' : '-' }}{{ item.totalCalories }} <span class="text-[10px] text-slate-500 font-normal">kcal</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-slate-600 text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ADD FOOD TAB ================= -->
+            <div v-if="hasProfile && currentTab === 'add_food'" class="p-4 space-y-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-4 top-4 text-slate-400"></i>
+                    <input type="text" v-model="foodSearchQuery" placeholder="Search foods (e.g., Kifli, Apple)..." class="w-full bg-cardbg border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:ring-2 focus:ring-secondary outline-none shadow-sm">
+                </div>
+
+                <!-- Custom / AI Placeholder -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button @click="openCustomFoodModal" class="bg-cardbg border border-slate-700 hover:bg-slate-700 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition shadow-sm text-secondary">
+                        <i class="fa-solid fa-pen text-xl"></i>
+                        <span class="text-xs font-bold">Manual Entry</span>
+                    </button>
+                    <button @click="alertAIFeature" class="bg-gradient-to-br from-indigo-600 to-purple-600 hover:opacity-90 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition shadow-sm text-white relative overflow-hidden">
+                        <div class="absolute top-0 right-0 -mr-2 -mt-2 bg-yellow-400 text-yellow-900 text-[8px] font-black px-2 py-1 rounded-bl-lg">PRO</div>
+                        <i class="fa-solid fa-camera text-xl"></i>
+                        <span class="text-xs font-bold">AI Scanner</span>
+                    </button>
+                </div>
+
+                <!-- Food List -->
+                <div class="bg-cardbg rounded-xl border border-slate-700 overflow-hidden shadow-sm">
+                    <div v-for="food in filteredFoods" :key="food.id" class="border-b border-slate-700 last:border-0 flex justify-between items-center p-3 hover:bg-slate-700/50 transition">
+                        <div class="flex-1 cursor-pointer" @click="openFoodModal(food)">
+                            <h4 class="font-semibold text-slate-100 text-sm">{{ food.name }}</h4>
+                            <p class="text-xs text-slate-400">{{ food.calPer100g }} kcal / 100{{ food.defaultUnit === 'ml' ? 'ml' : 'g' }}</p>
+                        </div>
+                        <div class="flex items-center gap-3 pl-2">
+                            <button @click.stop="toggleFavorite(food.id)" class="p-2 transition">
+                                <i :class="['fa-heart text-lg', favoriteFoods.includes(food.id) ? 'fa-solid text-red-500' : 'fa-regular text-slate-500 hover:text-slate-300']"></i>
+                            </button>
+                            <button @click="openFoodModal(food)" class="bg-secondary/20 text-secondary hover:bg-secondary hover:text-white w-8 h-8 rounded-full flex items-center justify-center transition">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="filteredFoods.length === 0" class="p-6 text-center text-slate-500 text-sm">
+                        No foods found. Try adding a manual entry!
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= ADD EXERCISE TAB ================= -->
+            <div v-if="hasProfile && currentTab === 'add_exercise'" class="p-4 space-y-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-4 top-4 text-slate-400"></i>
+                    <input type="text" v-model="exerciseSearchQuery" placeholder="Search activity..." class="w-full bg-cardbg border border-slate-700 rounded-xl py-3 pl-12 pr-4 text-white focus:ring-2 focus:ring-primary outline-none shadow-sm">
+                </div>
+
+                <div class="bg-cardbg rounded-xl border border-slate-700 overflow-hidden shadow-sm">
+                    <div v-for="ex in filteredExercises" :key="ex.id" @click="openExerciseModal(ex)" class="border-b border-slate-700 last:border-0 flex justify-between items-center p-4 hover:bg-slate-700/50 transition cursor-pointer">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center">
+                                <i :class="ex.icon"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-slate-100 text-sm">{{ ex.name }}</h4>
+                                <p v-if="ex.id !== 'steps'" class="text-[10px] text-slate-400">MET: {{ ex.met }}</p>
+                            </div>
+                        </div>
+                        <button class="text-primary p-2">
+                            <i class="fa-solid fa-plus text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= PROGRESS / CHARTS TAB ================= -->
+            <div v-if="hasProfile && currentTab === 'progress'" class="p-4 space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white mb-1">Progress & Trends</h2>
+                    <p class="text-xs text-slate-400">Track your journey over time</p>
+                </div>
+
+                <!-- Update Weight Section -->
+                <div class="bg-cardbg rounded-2xl p-5 border border-slate-700 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3">Log Today's Weight (kg)</h3>
+                    <div class="flex gap-3">
+                        <input type="number" v-model.number="newWeightInput" step="0.1" class="flex-1 bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-primary outline-none font-bold text-lg" placeholder="E.g. 75.5">
+                        <button @click="logWeight" class="bg-primary text-white font-bold px-6 rounded-lg hover:bg-emerald-600 transition shadow-md">Save</button>
+                    </div>
+                    <p v-if="weightLogSuccess" class="text-xs text-primary mt-2"><i class="fa-solid fa-check mr-1"></i>Weight logged successfully!</p>
+                </div>
+
+                <!-- Calorie Chart -->
+                <div class="bg-cardbg rounded-2xl p-4 border border-slate-700 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-4">Calorie History (Last 7 Days)</h3>
+                    <div class="relative h-64 w-full">
+                        <canvas id="calorieChart"></canvas>
+                    </div>
+                    <div class="flex justify-center gap-4 mt-4">
+                        <div class="flex items-center text-[10px] text-slate-400 font-medium"><span class="w-3 h-3 bg-secondary rounded-sm mr-1.5"></span> Consumed</div>
+                        <div class="flex items-center text-[10px] text-slate-400 font-medium"><span class="w-4 h-0.5 bg-red-500 border-t-2 border-dashed border-red-500 mr-1.5"></span> Target</div>
+                    </div>
+                </div>
+
+                <!-- Weight Chart -->
+                <div class="bg-cardbg rounded-2xl p-4 border border-slate-700 shadow-lg">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-4">Weight History</h3>
+                    <div class="relative h-64 w-full">
+                        <canvas id="weightChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-10"></div> <!-- extra padding for scrolling past nav -->
+        </main>
+
+        <nav v-if="hasProfile" class="fixed bottom-0 left-0 w-full bg-cardbg border-t border-slate-700 flex justify-around p-2 z-40 pb-safe shadow-[0_-4px_10px_rgba(0,0,0,0.2)]">
+            <button @click="currentTab = 'dashboard'" :class="['flex flex-col items-center p-2 transition w-16', currentTab === 'dashboard' ? 'text-primary' : 'text-slate-500 hover:text-slate-300']">
+                <i class="fa-solid fa-house text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            <button @click="currentTab = 'add_food'" :class="['flex flex-col items-center p-2 transition w-16', currentTab === 'add_food' ? 'text-secondary' : 'text-slate-500 hover:text-slate-300']">
+                <i class="fa-solid fa-apple-whole text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Food</span>
+            </button>
+            <!-- Floating FAB alternative in the middle -->
+            <button @click="currentTab = 'add_exercise'" class="relative -top-6 bg-gradient-to-tr from-orange-500 to-red-500 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30 border-4 border-appbg transition active:scale-95">
+                <i class="fa-solid fa-person-running text-2xl"></i>
+            </button>
+            <button @click="currentTab = 'progress'" :class="['flex flex-col items-center p-2 transition w-16', currentTab === 'progress' ? 'text-purple-400' : 'text-slate-500 hover:text-slate-300']">
+                <i class="fa-solid fa-chart-line text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Progress</span>
+            </button>
+            <button @click="currentTab = 'profile'" :class="['flex flex-col items-center p-2 transition w-16', currentTab === 'profile' ? 'text-primary' : 'text-slate-500 hover:text-slate-300']">
+                <i class="fa-solid fa-gear text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Settings</span>
+            </button>
+        </nav>
+
+        <!-- Add/Edit Food Modal -->
+        <div v-if="activeFoodModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-cardbg rounded-3xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl relative">
+                <button @click="closeModals" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+                
+                <h3 class="text-lg font-bold text-white mb-1">{{ activeFoodModal.name }}</h3>
+                <p class="text-xs text-slate-400 mb-4">{{ activeFoodModal.calPer100g }} kcal per 100{{ activeFoodModal.defaultUnit === 'ml' ? 'ml' : 'g' }}</p>
+                
+                <div class="mb-6">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase">Amount ({{ activeFoodModal.defaultUnit }})</label>
+                    <div class="flex items-center gap-3">
+                        <input type="number" v-model.number="modalInputAmount" class="flex-1 bg-appbg border border-slate-600 text-white rounded-xl p-4 text-2xl font-black text-center focus:ring-2 focus:ring-secondary outline-none">
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center bg-slate-900 rounded-xl p-4 mb-6 border border-slate-700">
+                    <span class="text-slate-400 font-medium">Total Calories:</span>
+                    <span class="text-2xl font-black text-secondary">{{ calculatedFoodCalories }} <span class="text-sm font-normal text-slate-500">kcal</span></span>
+                </div>
+                
+                <button @click="confirmAddFood" class="w-full bg-secondary hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg transition">
+                    {{ isEditing ? 'Update Log' : 'Add to Diary' }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Add/Edit Exercise Modal -->
+        <div v-if="activeExerciseModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-cardbg rounded-3xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl relative">
+                <button @click="closeModals" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+                
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-lg">
+                        <i :class="activeExerciseModal.icon"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">{{ activeExerciseModal.name }}</h3>
+                        <p v-if="activeExerciseModal.id !== 'steps'" class="text-xs text-slate-400">Based on your weight ({{profile.weight}}kg)</p>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase">
+                        {{ activeExerciseModal.id === 'steps' ? 'Number of Steps' : 'Duration (Minutes)' }}
+                    </label>
+                    <input type="number" v-model.number="modalInputExerciseAmount" class="w-full bg-appbg border border-slate-600 text-white rounded-xl p-4 text-2xl font-black text-center focus:ring-2 focus:ring-primary outline-none">
+                </div>
+                
+                <div class="flex justify-between items-center bg-slate-900 rounded-xl p-4 mb-6 border border-slate-700">
+                    <span class="text-slate-400 font-medium">Calories Burned:</span>
+                    <span class="text-2xl font-black text-orange-400">{{ calculatedExerciseCalories }} <span class="text-sm font-normal text-slate-500">kcal</span></span>
+                </div>
+                
+                <button @click="confirmAddExercise" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg transition">
+                    {{ isEditing ? 'Update Log' : 'Log Activity' }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Custom Food Modal -->
+        <div v-if="showCustomFoodModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-cardbg rounded-3xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl relative">
+                <button @click="closeModals" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+                <h3 class="text-lg font-bold text-white mb-4">Add Custom Food</h3>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Food Name</label>
+                        <input type="text" v-model="customFoodInput.name" placeholder="e.g. Grandma's Cake" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-secondary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">Calories (per 100g/unit)</label>
+                        <input type="number" v-model.number="customFoodInput.calories" placeholder="e.g. 250" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-secondary">
+                    </div>
+                </div>
+                
+                <button @click="saveCustomFood" class="w-full bg-secondary hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition">
+                    Save to My Foods
+                </button>
+            </div>
+        </div>
+
+        <!-- Edit/Delete Actions Modal -->
+        <div v-if="editActionModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center pb-safe">
+            <div class="bg-cardbg rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl transform transition-transform animate-slide-up">
+                <div class="w-12 h-1.5 bg-slate-600 rounded-full mx-auto mb-4 sm:hidden"></div>
+                <h3 class="text-lg font-bold text-white mb-1 text-center">{{ itemToEdit.name }}</h3>
+                <p class="text-xs text-slate-400 text-center mb-6">{{ itemToEdit.amount }} {{ itemToEdit.unit }} • {{ itemToEdit.totalCalories }} kcal</p>
+                
+                <div class="space-y-3">
+                    <button @click="triggerEdit" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-pen"></i> Edit Amount
+                    </button>
+                    <button @click="deleteItem" class="w-full bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-trash"></i> Delete Log
+                    </button>
+                    <button @click="closeModals" class="w-full text-slate-400 font-bold py-3 mt-2">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+        // Static Database
+        const builtinFoods = [
+            { id: 'f1', name: 'Kenyér (White Bread)', calPer100g: 265, defaultUnit: 'g', defaultAmount: 50 },
+            { id: 'f2', name: 'Milk Coffee (w/ Brown Sugar)', calPer100g: 65, defaultUnit: 'ml', defaultAmount: 200 },
+            { id: 'f3', name: 'Trappista Sajt (Cheese)', calPer100g: 350, defaultUnit: 'g', defaultAmount: 30 },
+            { id: 'f4', name: 'Sonka (Ham)', calPer100g: 145, defaultUnit: 'g', defaultAmount: 50 },
+            { id: 'f5', name: 'Zabkása (Oatmeal)', calPer100g: 370, defaultUnit: 'g', defaultAmount: 60 },
+            { id: 'f6', name: 'Csirkemell (Chicken Breast)', calPer100g: 165, defaultUnit: 'g', defaultAmount: 150 },
+            { id: 'f7', name: 'Túró (Cottage Cheese)', calPer100g: 98, defaultUnit: 'g', defaultAmount: 100 },
+            { id: 'f8', name: 'Apple', calPer100g: 52, defaultUnit: 'g', defaultAmount: 150 },
+            { id: 'f9', name: 'Banana', calPer100g: 89, defaultUnit: 'g', defaultAmount: 120 },
+            { id: 'f10', name: 'Lángos (Plain)', calPer100g: 295, defaultUnit: 'g', defaultAmount: 150 }
+        ];
+
+        // Specific sports requested by user + standard
+        const exerciseDB = [
+            { id: 'steps', name: 'Daily Steps', icon: 'fa-solid fa-shoe-prints', met: null }, // Special handling
+            { id: 'e1', name: 'Running', icon: 'fa-solid fa-person-running', met: 8.0 },
+            { id: 'e2', name: 'Cycling (Outdoor)', icon: 'fa-solid fa-bicycle', met: 7.5 },
+            { id: 'e3', name: 'Indoor Cycling', icon: 'fa-solid fa-spinner', met: 7.0 },
+            { id: 'e4', name: 'Swimming (Pool)', icon: 'fa-solid fa-person-swimming', met: 6.0 },
+            { id: 'e5', name: 'Swimming (Open Water)', icon: 'fa-solid fa-water', met: 6.0 },
+            { id: 'e6', name: 'Squash', icon: 'fa-solid fa-table-tennis-paddle-ball', met: 7.3 },
+            { id: 'e7', name: 'Walking', icon: 'fa-solid fa-person-walking', met: 3.5 },
+            { id: 'e8', name: 'Sauna', icon: 'fa-solid fa-hot-tub-person', met: 1.5 },
+            { id: 'e9', name: 'Cleaning', icon: 'fa-solid fa-broom', met: 3.0 },
+            { id: 'e10', name: 'Washing Up', icon: 'fa-solid fa-sink', met: 1.8 },
+            { id: 'e11', name: 'Gardening', icon: 'fa-solid fa-leaf', met: 4.0 }
+        ];
+
+        createApp({
+            setup() {
+                // --- State ---
+                const currentTab = ref('profile'); 
+                const hasProfile = ref(false);
+                
+                const profile = ref({
+                    birthday: '', gender: 'male', weight: null, height: null,
+                    activityLevel: 1.2, goalDeficit: 0,
+                    stepReminder: false, reminderTime: '20:00'
+                });
+
+                const dailyTarget = ref(2000); 
+                const dailyLogs = ref([]);
+                const weightHistory = ref([]);
+                const favoriteFoods = ref([]);
+                const savedCustomFoods = ref([]);
+                
+                const foodSearchQuery = ref('');
+                const exerciseSearchQuery = ref('');
+                const newWeightInput = ref(null);
+                const weightLogSuccess = ref(false);
+                const showStepReminderBanner = ref(false);
+
+                // Modal States
+                const activeFoodModal = ref(null);
+                const modalInputAmount = ref(100);
+                const activeExerciseModal = ref(null);
+                const modalInputExerciseAmount = ref(30);
+                const showCustomFoodModal = ref(false);
+                const customFoodInput = ref({ name: '', calories: null });
+                
+                // Edit Actions State
+                const editActionModal = ref(false);
+                const itemToEdit = ref(null);
+                const isEditing = ref(false);
+
+                let weightChartInstance = null;
+                let calorieChartInstance = null;
+
+                // --- Computed ---
+                const calculatedAge = computed(() => {
+                    if (!profile.value.birthday) return 30;
+                    const diff = Date.now() - new Date(profile.value.birthday).getTime();
+                    return Math.abs(new Date(diff).getUTCFullYear() - 1970);
+                });
+
+                const getTodayStr = () => {
+                    const d = new Date();
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                };
+                
+                const formattedDate = computed(() => {
+                    return getTodayStr();
+                });
+
+                const todaysLog = computed(() => {
+                    const today = getTodayStr();
+                    return dailyLogs.value.filter(log => log.dateStr === today);
+                });
+
+                const totalConsumed = computed(() => {
+                    return todaysLog.value.filter(l => l.type === 'food').reduce((sum, l) => sum + l.totalCalories, 0);
+                });
+
+                const totalBurned = computed(() => {
+                    return todaysLog.value.filter(l => l.type === 'exercise').reduce((sum, l) => sum + l.totalCalories, 0);
+                });
+
+                const remainingCalories = computed(() => {
+                    return (dailyTarget.value + totalBurned.value) - totalConsumed.value;
+                });
+
+                const allFoods = computed(() => [...savedCustomFoods.value, ...builtinFoods]);
+
+                const filteredFoods = computed(() => {
+                    let filtered = allFoods.value;
+                    if (foodSearchQuery.value) {
+                        const q = foodSearchQuery.value.toLowerCase();
+                        filtered = filtered.filter(f => f.name.toLowerCase().includes(q));
+                    }
+                    // Sort: Favorites first, then alphabetical
+                    return filtered.sort((a, b) => {
+                        const aFav = favoriteFoods.value.includes(a.id);
+                        const bFav = favoriteFoods.value.includes(b.id);
+                        if (aFav && !bFav) return -1;
+                        if (!aFav && bFav) return 1;
+                        return a.name.localeCompare(b.name);
+                    });
+                });
+
+                const filteredExercises = computed(() => {
+                    if (!exerciseSearchQuery.value) return exerciseDB;
+                    const q = exerciseSearchQuery.value.toLowerCase();
+                    return exerciseDB.filter(e => e.name.toLowerCase().includes(q));
+                });
+
+                // Modal Computations
+                const calculatedFoodCalories = computed(() => {
+                    if (!activeFoodModal.value) return 0;
+                    return Math.round((activeFoodModal.value.calPer100g / 100) * modalInputAmount.value);
+                });
+
+                const calculatedExerciseCalories = computed(() => {
+                    if (!activeExerciseModal.value) return 0;
+                    const amount = modalInputExerciseAmount.value || 0;
+                    
+                    if (activeExerciseModal.value.id === 'steps') {
+                        return Math.round(amount * 0.04);
+                    } else {
+                        // MET formula
+                        const weight = profile.value.weight || 70;
+                        const met = activeExerciseModal.value.met;
+                        return Math.round((met * 3.5 * weight / 200) * amount);
+                    }
+                });
+
+                // --- Methods ---
+                
+                const calculateTDEE = () => {
+                    if(!profile.value.weight || !profile.value.height || !profile.value.birthday) return 2000;
+                    let bmr = (10 * profile.value.weight) + (6.25 * profile.value.height) - (5 * calculatedAge.value);
+                    bmr += profile.value.gender === 'male' ? 5 : -161;
+                    const tdee = bmr * profile.value.activityLevel;
+                    const target = tdee - profile.value.goalDeficit;
+                    const safeMin = profile.value.gender === 'male' ? 1500 : 1200;
+                    return Math.max(Math.round(target), safeMin);
+                };
+
+                const saveProfile = () => {
+                    dailyTarget.value = calculateTDEE();
+                    hasProfile.value = true;
+                    
+                    const today = getTodayStr();
+                    if (!weightHistory.value.some(w => w.dateStr === today)) {
+                        weightHistory.value.push({ dateStr: today, weight: profile.value.weight });
+                    }
+                    saveData();
+                    currentTab.value = 'dashboard';
+                };
+
+                // Interactions
+                const toggleFavorite = (id) => {
+                    const idx = favoriteFoods.value.indexOf(id);
+                    if (idx > -1) favoriteFoods.value.splice(idx, 1);
+                    else favoriteFoods.value.push(id);
+                    saveData();
+                };
+
+                const alertAIFeature = () => {
+                    alert("AI Feature Placeholder:\nIn a production app, this would open the camera, process the image locally (or via API), and estimate calories. Kept private for this version.");
+                };
+
+                // Modals
+                const closeModals = () => {
+                    activeFoodModal.value = null;
+                    activeExerciseModal.value = null;
+                    showCustomFoodModal.value = null;
+                    editActionModal.value = false;
+                    isEditing.value = false;
+                    itemToEdit.value = null;
+                };
+
+                const openFoodModal = (food) => {
+                    activeFoodModal.value = food;
+                    modalInputAmount.value = food.defaultAmount || 100;
+                    isEditing.value = false;
+                };
+
+                const openCustomFoodModal = () => {
+                    customFoodInput.value = { name: '', calories: null };
+                    showCustomFoodModal.value = true;
+                };
+
+                const saveCustomFood = () => {
+                    if(!customFoodInput.value.name || !customFoodInput.value.calories) return;
+                    const newFood = {
+                        id: 'c_' + Date.now(),
+                        name: customFoodInput.value.name,
+                        calPer100g: customFoodInput.value.calories,
+                        defaultUnit: 'g',
+                        defaultAmount: 100
+                    };
+                    savedCustomFoods.value.push(newFood);
+                    toggleFavorite(newFood.id); // Auto favorite custom foods
+                    saveData();
+                    closeModals();
+                };
+
+                const openExerciseModal = (ex) => {
+                    activeExerciseModal.value = ex;
+                    modalInputExerciseAmount.value = ex.id === 'steps' ? 5000 : 30;
+                    isEditing.value = false;
+                };
+
+                const openStepsModal = () => {
+                    const stepsEx = exerciseDB.find(e => e.id === 'steps');
+                    openExerciseModal(stepsEx);
+                };
+
+                // Actions
+                const confirmAddFood = () => {
+                    if (isEditing.value && itemToEdit.value) {
+                        // Update existing
+                        itemToEdit.value.amount = modalInputAmount.value;
+                        itemToEdit.value.totalCalories = calculatedFoodCalories.value;
+                    } else {
+                        // Add new
+                        dailyLogs.value.push({
+                            id: Date.now(),
+                            dateStr: getTodayStr(),
+                            type: 'food',
+                            name: activeFoodModal.value.name,
+                            amount: modalInputAmount.value,
+                            unit: activeFoodModal.value.defaultUnit,
+                            baseCalPer100: activeFoodModal.value.calPer100g,
+                            totalCalories: calculatedFoodCalories.value,
+                            refId: activeFoodModal.value.id
+                        });
+                    }
+                    saveData();
+                    closeModals();
+                    currentTab.value = 'dashboard';
+                };
+
+                const confirmAddExercise = () => {
+                    if (isEditing.value && itemToEdit.value) {
+                        itemToEdit.value.amount = modalInputExerciseAmount.value;
+                        itemToEdit.value.totalCalories = calculatedExerciseCalories.value;
+                    } else {
+                        dailyLogs.value.push({
+                            id: Date.now(),
+                            dateStr: getTodayStr(),
+                            type: 'exercise',
+                            name: activeExerciseModal.value.name,
+                            amount: modalInputExerciseAmount.value,
+                            unit: activeExerciseModal.value.id === 'steps' ? 'steps' : 'min',
+                            totalCalories: calculatedExerciseCalories.value,
+                            refId: activeExerciseModal.value.id
+                        });
+                    }
+                    saveData();
+                    closeModals();
+                    currentTab.value = 'dashboard';
+                };
+
+                // Editing Logs
+                const openEditModal = (item) => {
+                    itemToEdit.value = item;
+                    editActionModal.value = true;
+                };
+
+                const triggerEdit = () => {
+                    editActionModal.value = false;
+                    isEditing.value = true;
+                    if (itemToEdit.value.type === 'food') {
+                        // Reconstruct food object for modal
+                        const refFood = allFoods.value.find(f => f.id === itemToEdit.value.refId) || {
+                            name: itemToEdit.value.name, calPer100g: itemToEdit.value.baseCalPer100, defaultUnit: itemToEdit.value.unit
+                        };
+                        activeFoodModal.value = refFood;
+                        modalInputAmount.value = itemToEdit.value.amount;
+                    } else {
+                        const refEx = exerciseDB.find(e => e.id === itemToEdit.value.refId);
+                        activeExerciseModal.value = refEx;
+                        modalInputExerciseAmount.value = itemToEdit.value.amount;
+                    }
+                };
+
+                const deleteItem = () => {
+                    if(!itemToEdit.value) return;
+                    const index = dailyLogs.value.findIndex(l => l.id === itemToEdit.value.id);
+                    if (index > -1) {
+                        dailyLogs.value.splice(index, 1);
+                        saveData();
+                    }
+                    closeModals();
+                };
+
+                // Charts & Progress
+                const logWeight = () => {
+                    if (!newWeightInput.value) return;
+                    const today = getTodayStr();
+                    const existing = weightHistory.value.find(w => w.dateStr === today);
+                    
+                    if (existing) existing.weight = newWeightInput.value;
+                    else weightHistory.value.push({ dateStr: today, weight: newWeightInput.value });
+                    
+                    weightHistory.value.sort((a, b) => new Date(a.dateStr) - new Date(b.dateStr));
+                    profile.value.weight = newWeightInput.value;
+                    dailyTarget.value = calculateTDEE();
+                    
+                    saveData();
+                    newWeightInput.value = null;
+                    weightLogSuccess.value = true;
+                    setTimeout(() => weightLogSuccess.value = false, 3000);
+                    renderCharts();
+                };
+
+                const renderCharts = async () => {
+                    await nextTick();
+                    if (!window.Chart || currentTab.value !== 'progress') return;
+
+                    // 1. Weight Chart
+                    const weightCtx = document.getElementById('weightChart');
+                    if (weightCtx) {
+                        if (weightChartInstance) weightChartInstance.destroy();
+                        const labels = weightHistory.value.map(w => w.dateStr);
+                        const data = weightHistory.value.map(w => w.weight);
+
+                        weightChartInstance = new Chart(weightCtx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Weight (kg)',
+                                    data: data,
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    borderWidth: 3,
+                                    tension: 0.4,
+                                    fill: true,
+                                    pointBackgroundColor: '#3b82f6',
+                                    pointRadius: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                                }
+                            }
+                        });
+                    }
+
+                    // 2. Calorie Chart
+                    const calorieCtx = document.getElementById('calorieChart');
+                    if (calorieCtx) {
+                        if (calorieChartInstance) calorieChartInstance.destroy();
+
+                        const last7DaysStrings = Array.from({length: 7}, (_, i) => {
+                            const d = new Date();
+                            d.setDate(d.getDate() - (6 - i));
+                            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        });
+
+                        const labels = last7DaysStrings;
+
+                        const consumedData = last7DaysStrings.map(dateStr => {
+                            return dailyLogs.value.filter(l => l.dateStr === dateStr && l.type === 'food').reduce((sum, l) => sum + l.totalCalories, 0);
+                        });
+                        const targetData = last7DaysStrings.map(() => dailyTarget.value);
+
+                        calorieChartInstance = new Chart(calorieCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    {
+                                        label: 'Consumed',
+                                        data: consumedData,
+                                        backgroundColor: '#3b82f6',
+                                        borderRadius: 6
+                                    },
+                                    {
+                                        label: 'Target',
+                                        data: targetData,
+                                        type: 'line',
+                                        borderColor: '#ef4444',
+                                        borderWidth: 2,
+                                        borderDash: [5, 5],
+                                        pointRadius: 0,
+                                        fill: false
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                                }
+                            }
+                        });
+                    }
+                };
+
+                // Watchers & Reminders
+                watch(currentTab, (newTab) => {
+                    if (newTab === 'progress') renderCharts();
+                    if (newTab === 'dashboard') checkStepReminder();
+                });
+
+                const checkStepReminder = () => {
+                    if (!profile.value.stepReminder || !profile.value.reminderTime) {
+                        showStepReminderBanner.value = false;
+                        return;
+                    }
+                    const now = new Date();
+                    const [h, m] = profile.value.reminderTime.split(':').map(Number);
+                    const reminderDate = new Date();
+                    reminderDate.setHours(h, m, 0);
+                    
+                    const hasLoggedStepsToday = todaysLog.value.some(l => l.refId === 'steps');
+                    
+                    if (now >= reminderDate && !hasLoggedStepsToday) {
+                        showStepReminderBanner.value = true;
+                    } else {
+                        showStepReminderBanner.value = false;
+                    }
+                };
+
+                // --- Storage ---
+                const saveData = () => {
+                    const data = {
+                        profile: profile.value, hasProfile: hasProfile.value,
+                        dailyTarget: dailyTarget.value, dailyLogs: dailyLogs.value,
+                        weightHistory: weightHistory.value, favoriteFoods: favoriteFoods.value,
+                        savedCustomFoods: savedCustomFoods.value
+                    };
+                    localStorage.setItem('nutriTrackPro', JSON.stringify(data));
+                };
+
+                const loadData = () => {
+                    const saved = localStorage.getItem('nutriTrackPro');
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.hasProfile) {
+                                profile.value = parsed.profile;
+                                hasProfile.value = parsed.hasProfile;
+                                dailyTarget.value = parsed.dailyTarget;
+                                dailyLogs.value = parsed.dailyLogs || [];
+                                weightHistory.value = parsed.weightHistory || [];
+                                favoriteFoods.value = parsed.favoriteFoods || [];
+                                savedCustomFoods.value = parsed.savedCustomFoods || [];
+                                
+                                currentTab.value = 'dashboard';
+                                checkStepReminder();
+                            }
+                        } catch (e) { console.error("Could not load data", e); }
+                    }
+                };
+
+                onMounted(() => {
+                    loadData();
+                    setInterval(checkStepReminder, 60000); // Check reminder every minute
+                });
+
+                return {
+                    currentTab, hasProfile, profile, dailyTarget, formattedDate,
+                    todaysLog, totalConsumed, totalBurned, remainingCalories,
+                    
+                    foodSearchQuery, filteredFoods, favoriteFoods, toggleFavorite,
+                    activeFoodModal, modalInputAmount, openFoodModal, closeModals, confirmAddFood, calculatedFoodCalories,
+                    showCustomFoodModal, customFoodInput, openCustomFoodModal, saveCustomFood, alertAIFeature,
+                    
+                    exerciseSearchQuery, filteredExercises,
+                    activeExerciseModal, modalInputExerciseAmount, openExerciseModal, openStepsModal, confirmAddExercise, calculatedExerciseCalories,
+                    
+                    editActionModal, itemToEdit, isEditing, openEditModal, triggerEdit, deleteItem,
+                    
+                    saveProfile, showStepReminderBanner,
+                    weightHistory, newWeightInput, logWeight, weightLogSuccess
+                };
+            }
+        }).mount('#app');
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.warn('NutriTrack service worker registration failed:', err);
+                });
+            });
+        }
+    </script>
+
+</body>
+</html>
