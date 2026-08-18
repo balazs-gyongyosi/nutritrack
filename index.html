@@ -6,11 +6,6 @@
     <title>NutriTrack Pro</title>
     
     <!-- App Icon & PWA Meta Tags -->
-    <link rel="manifest" href="./manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="NutriTrack">
-    <meta name="theme-color" content="#0f172a">
-
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -156,6 +151,14 @@
                         <input type="time" v-model="profile.reminderTime" class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-primary outline-none">
                     </div>
 
+                    <hr class="border-slate-700 my-4">
+                    
+                    <div>
+                        <label class="block text-sm font-semibold text-white">AI Scanner API Key</label>
+                        <p class="text-[10px] text-slate-400 mb-2">Get a free Gemini API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-secondary underline">Google AI Studio</a> to enable the photo scanner.</p>
+                        <input type="password" v-model="profile.apiKey" placeholder="Paste your API key here..." class="w-full bg-appbg border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-secondary outline-none text-sm">
+                    </div>
+
                     <button type="submit" class="w-full bg-primary hover:bg-emerald-600 text-white font-bold rounded-xl p-4 mt-4 transition shadow-lg shadow-primary/20">
                         {{ hasProfile ? 'Update Profile & Goals' : 'Calculate My Goals' }}
                     </button>
@@ -242,8 +245,9 @@
                         <i class="fa-solid fa-pen text-xl"></i>
                         <span class="text-xs font-bold">Manual Entry</span>
                     </button>
-                    <button @click="alertAIFeature" class="bg-gradient-to-br from-indigo-600 to-purple-600 hover:opacity-90 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition shadow-sm text-white relative overflow-hidden">
-                        <div class="absolute top-0 right-0 -mr-2 -mt-2 bg-yellow-400 text-yellow-900 text-[8px] font-black px-2 py-1 rounded-bl-lg">PRO</div>
+                    
+                    <input type="file" ref="cameraInput" accept="image/*" capture="environment" @change="processFoodImage" class="hidden">
+                    <button @click="triggerCamera" class="bg-gradient-to-br from-indigo-600 to-purple-600 hover:opacity-90 rounded-xl p-3 flex flex-col items-center justify-center gap-2 transition shadow-sm text-white relative overflow-hidden">
                         <i class="fa-solid fa-camera text-xl"></i>
                         <span class="text-xs font-bold">AI Scanner</span>
                     </button>
@@ -461,6 +465,25 @@
             </div>
         </div>
 
+        <!-- AI Loading Overlay -->
+        <div v-if="isAnalyzingImage" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-4">
+            <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <h3 class="text-white font-bold text-lg animate-pulse">Analyzing your food...</h3>
+            <p class="text-slate-400 text-xs mt-2 text-center max-w-xs">AI is estimating portion size and calories. This may take a few seconds.</p>
+        </div>
+
+        <!-- Custom Error/Message Modal -->
+        <div v-if="errorMessage" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div class="bg-cardbg rounded-3xl p-6 w-full max-w-sm border border-slate-700 shadow-2xl text-center">
+                <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Notice</h3>
+                <p class="text-sm text-slate-400 mb-6">{{ errorMessage }}</p>
+                <button @click="errorMessage = ''" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">Got it</button>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -505,7 +528,8 @@
                 const profile = ref({
                     birthday: '', gender: 'male', weight: null, height: null,
                     activityLevel: 1.2, goalDeficit: 0,
-                    stepReminder: false, reminderTime: '20:00'
+                    stepReminder: false, reminderTime: '20:00',
+                    apiKey: '' // Added for AI feature
                 });
 
                 const dailyTarget = ref(2000); 
@@ -528,6 +552,11 @@
                 const showCustomFoodModal = ref(false);
                 const customFoodInput = ref({ name: '', calories: null });
                 
+                // AI Features
+                const cameraInput = ref(null);
+                const isAnalyzingImage = ref(false);
+                const errorMessage = ref('');
+
                 // Edit Actions State
                 const editActionModal = ref(false);
                 const itemToEdit = ref(null);
@@ -645,8 +674,72 @@
                     saveData();
                 };
 
-                const alertAIFeature = () => {
-                    alert("AI Feature Placeholder:\nIn a production app, this would open the camera, process the image locally (or via API), and estimate calories. Kept private for this version.");
+                const triggerCamera = () => {
+                    if (!profile.value.apiKey) {
+                        errorMessage.value = "Please go to Settings and enter a free Gemini API Key first to use the AI Scanner.";
+                        return;
+                    }
+                    if (cameraInput.value) {
+                        cameraInput.value.click();
+                    }
+                };
+
+                const processFoodImage = async (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    isAnalyzingImage.value = true;
+                    
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const base64Data = e.target.result.split(',')[1];
+                        
+                        try {
+                            const payload = {
+                                contents: [{
+                                    role: "user",
+                                    parts: [
+                                        { text: "Analyze this food image. Provide a short, generic name for it (max 3 words). Estimate the calories per 100g. Return ONLY a raw JSON object matching this exact structure: {\"name\": \"string\", \"calPer100g\": number}. Do not add Markdown formatting or any other text." },
+                                        { inlineData: { mimeType: file.type, data: base64Data } }
+                                    ]
+                                }],
+                                generationConfig: { responseMimeType: "application/json" }
+                            };
+
+                            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${profile.value.apiKey.trim()}`;
+
+                            const response = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+
+                            const result = await response.json();
+                            if (result.error) throw new Error(result.error.message);
+
+                            const jsonStr = result.candidates[0].content.parts[0].text;
+                            const parsed = JSON.parse(jsonStr);
+
+                            // Open the regular food modal with the AI estimates populated!
+                            activeFoodModal.value = {
+                                id: 'ai_' + Date.now(),
+                                name: parsed.name + ' ✨',
+                                calPer100g: parsed.calPer100g,
+                                defaultUnit: 'g',
+                                defaultAmount: 100
+                            };
+                            modalInputAmount.value = 100; // AI default assumption
+                            isEditing.value = false;
+
+                        } catch (err) {
+                            console.error(err);
+                            errorMessage.value = "AI Analysis failed. Check your internet connection or verify your API key in Settings.";
+                        } finally {
+                            isAnalyzingImage.value = false;
+                            event.target.value = ''; // reset file input for next time
+                        }
+                    };
+                    reader.readAsDataURL(file);
                 };
 
                 // Modals
@@ -954,7 +1047,9 @@
                     
                     foodSearchQuery, filteredFoods, favoriteFoods, toggleFavorite,
                     activeFoodModal, modalInputAmount, openFoodModal, closeModals, confirmAddFood, calculatedFoodCalories,
-                    showCustomFoodModal, customFoodInput, openCustomFoodModal, saveCustomFood, alertAIFeature,
+                    showCustomFoodModal, customFoodInput, openCustomFoodModal, saveCustomFood,
+                    
+                    cameraInput, triggerCamera, processFoodImage, isAnalyzingImage, errorMessage,
                     
                     exerciseSearchQuery, filteredExercises,
                     activeExerciseModal, modalInputExerciseAmount, openExerciseModal, openStepsModal, confirmAddExercise, calculatedExerciseCalories,
@@ -967,16 +1062,5 @@
             }
         }).mount('#app');
     </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(err => {
-                    console.warn('NutriTrack service worker registration failed:', err);
-                });
-            });
-        }
-    </script>
-
 </body>
 </html>
